@@ -13,20 +13,18 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
-        overflow: hidden; /* Evita scroll no body, controlamos nos containers */
+        overflow: hidden; 
       }
       .comic-font {
         font-family: 'Bangers', cursive;
       }
-      /* Ocultar barras de rolagem globalmente */
       * {
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
       }
       *::-webkit-scrollbar {
-        display: none; /* Chrome, Safari and Opera */
+        display: none;
       }
-      /* Garantir que containers ocupem a altura total sem vazamentos */
       #root {
         height: 100vh;
         width: 100vw;
@@ -42,6 +40,7 @@
   }
 }
 </script>
+<script type="module" src="./index.tsx"></script>
 </head>
   <body>
     <div id="root"></div>
