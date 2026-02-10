@@ -1,9 +1,10 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Inicializa com uma string vazia se process.env.API_KEY não estiver disponível durante o build
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
 export async function generateCharacterBackstory(name: string, role: string) {
+  if (!process.env.API_KEY) return "Erro: Chave de API não configurada no Netlify.";
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Crie uma biografia curta e impactante para um personagem de quadrinhos chamado "${name}", cujo papel é "${role}". Foque em motivações e mistérios. Responda em Português.`
@@ -12,6 +13,7 @@ export async function generateCharacterBackstory(name: string, role: string) {
 }
 
 export async function suggestCharacterTraits(name: string, role: string) {
+  if (!process.env.API_KEY) return [];
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Sugira 4 características físicas ou psicológicas marcantes (tópicos) para o personagem "${name}" (${role}). Retorne em formato JSON.`,
@@ -34,6 +36,7 @@ export async function suggestCharacterTraits(name: string, role: string) {
 }
 
 export async function suggestLocationDescription(name: string, type: string) {
+  if (!process.env.API_KEY) return "Erro: Chave de API não configurada.";
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Descreva detalhadamente a atmosfera, clima e aparência visual de um local de quadrinhos chamado "${name}", que é do tipo "${type}". Responda com um parágrafo rico em detalhes sensoriais em Português.`
@@ -42,6 +45,7 @@ export async function suggestLocationDescription(name: string, type: string) {
 }
 
 export async function helpWithDialogue(speaker: string, sceneContext: string) {
+  if (!process.env.API_KEY) return "Erro de Conexão com IA.";
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `O personagem "${speaker}" está em: "${sceneContext}". Escreva um diálogo curto e potente para esta cena. Responda em Português.`
