@@ -11,6 +11,7 @@ import LogoEditor from './components/LogoEditor';
 import AutoResizeTextarea from './components/AutoResizeTextarea';
 import VisualGallery from './components/VisualGallery';
 import EditableField from './components/EditableField';
+import LoadingScreen from './components/LoadingScreen';
 
 const App: React.FC = () => {
   const [universes, setUniverses] = useState<Universe[]>([]);
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   const [sectionToDelete, setSectionToDelete] = useState<{id: string, name: string} | null>(null);
   const [pendingLogo, setPendingLogo] = useState<string | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   
   const [author, setAuthor] = useState<Author>({
     name: 'Autor Criativo',
@@ -378,6 +380,8 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-800 overflow-hidden relative">
+      {showSplash && <LoadingScreen onFinished={() => setShowSplash(false)} />}
+      
       <ConfirmationModal 
         isOpen={!!universeToDelete}
         title="⚠️ EXCLUIR UNIVERSO DEFINITIVAMENTE?"
@@ -387,7 +391,7 @@ const App: React.FC = () => {
         confirmText="SIM, APAGAR TUDO"
         cancelText="MANTER MUNDO"
       />
-
+      {/* Rest of the component continues exactly as before... */}
       <ConfirmationModal 
         isOpen={!!categoryToDelete}
         title="🗑️ EXCLUIR CATEGORIA?"

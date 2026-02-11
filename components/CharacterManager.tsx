@@ -1,7 +1,5 @@
-
 import React, { useState } from 'react';
 import { Character, CharacterTrait, CharacterSection, Universe, VisualReference } from '../types';
-import { suggestCharacterTraits, generateCharacterBackstory } from '../geminiService';
 import ConfirmationModal from './ConfirmationModal';
 import AutoResizeTextarea from './AutoResizeTextarea';
 import VisualGallery from './VisualGallery';
@@ -14,8 +12,6 @@ interface Props {
 
 const CharacterManager: React.FC<Props> = ({ universe, onUpdate }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoadingBackstory, setIsLoadingBackstory] = useState(false);
-  const [isLoadingTraits, setIsLoadingTraits] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'character' | 'trait' | 'section', id: string, name?: string, parentId?: string } | null>(null);
 
   const addCharacter = () => {
@@ -65,27 +61,6 @@ const CharacterManager: React.FC<Props> = ({ universe, onUpdate }) => {
     if (!char) return;
     const updatedSections = (char.customSections || []).map(s => s.id === sectionId ? { ...s, ...data } : s);
     updateCharacter(charId, { customSections: updatedSections });
-  };
-
-  const handleAISuggestBackstory = async (char: Character) => {
-    if (!char.name || !char.role) return;
-    setIsLoadingBackstory(true);
-    try {
-      const suggestion = await generateCharacterBackstory(char.name, char.role);
-      if (suggestion) updateCharacter(char.id, { backstory: suggestion });
-    } catch (e) { console.error(e); } finally { setIsLoadingBackstory(false); }
-  };
-
-  const handleAISuggestTraits = async (char: Character) => {
-    if (!char.name || !char.role) return;
-    setIsLoadingTraits(true);
-    try {
-      const traits = await suggestCharacterTraits(char.name, char.role);
-      if (traits && Array.isArray(traits)) {
-        const formattedTraits = traits.map((t: any) => ({ ...t, id: crypto.randomUUID() }));
-        updateCharacter(char.id, { traits: [...char.traits, ...formattedTraits] });
-      }
-    } catch (e) { console.error(e); } finally { setIsLoadingTraits(false); }
   };
 
   const executeDelete = () => {
@@ -176,18 +151,11 @@ const CharacterManager: React.FC<Props> = ({ universe, onUpdate }) => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
               </div>
-              {/* Rest of the component content remains the same... */}
+
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Biografia</h4>
-                    <button 
-                      onClick={() => handleAISuggestBackstory(activeChar)} 
-                      disabled={isLoadingBackstory} 
-                      className="flex items-center gap-1.5 text-[9px] font-black text-indigo-600 hover:underline disabled:opacity-50"
-                    >
-                      {isLoadingBackstory ? 'PENSANDO...' : 'IA SUGESTÃO'}
-                    </button>
                   </div>
                   <EditableField 
                     type="textarea"
@@ -203,9 +171,6 @@ const CharacterManager: React.FC<Props> = ({ universe, onUpdate }) => {
                     <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Características</h4>
                     <div className="flex items-center gap-4">
                       <button onClick={() => addTrait(activeChar.id)} className="text-[9px] font-black text-slate-400 hover:text-indigo-600 transition-colors uppercase">+ Adicionar</button>
-                      <button onClick={() => handleAISuggestTraits(activeChar)} disabled={isLoadingTraits} className="flex items-center gap-1.5 text-[9px] font-black text-indigo-600 hover:underline disabled:opacity-50">
-                        {isLoadingTraits ? 'GERANDO...' : 'GERAR COM IA'}
-                      </button>
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -296,11 +261,6 @@ const CharacterManager: React.FC<Props> = ({ universe, onUpdate }) => {
                       </div>
                     </div>
                   ))}
-                  {(!activeChar.customSections || activeChar.customSections.length === 0) && (
-                    <div className="py-12 border-2 border-dashed border-slate-50 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-300 space-y-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest">Nenhuma categoria extra</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

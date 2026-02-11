@@ -1,7 +1,5 @@
-
 import React, { useState } from 'react';
 import { Location, Universe, VisualReference } from '../types';
-import { suggestLocationDescription } from '../geminiService';
 import ConfirmationModal from './ConfirmationModal';
 import AutoResizeTextarea from './AutoResizeTextarea';
 import VisualGallery from './VisualGallery';
@@ -14,7 +12,6 @@ interface Props {
 
 const LocationManager: React.FC<Props> = ({ universe, onUpdate }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Location | null>(null);
 
   const addLocation = () => {
@@ -32,15 +29,6 @@ const LocationManager: React.FC<Props> = ({ universe, onUpdate }) => {
   const updateLocation = (id: string, data: Partial<Location>) => {
     const updatedLocs = (universe.locations || []).map(l => l.id === id ? { ...l, ...data } : l);
     onUpdate({ ...universe, locations: updatedLocs });
-  };
-
-  const handleAISuggestLocation = async (loc: Location) => {
-    if (!loc.name || !loc.type) return;
-    setIsLoadingAI(true);
-    try {
-      const suggestion = await suggestLocationDescription(loc.name, loc.type);
-      if (suggestion) updateLocation(loc.id, { description: suggestion });
-    } catch (e) { console.error(e); } finally { setIsLoadingAI(false); }
   };
 
   const executeDelete = () => {
@@ -120,16 +108,7 @@ const LocationManager: React.FC<Props> = ({ universe, onUpdate }) => {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Atmosfera do Lugar</h4>
-                  <button 
-                    onClick={() => handleAISuggestLocation(activeLoc)} 
-                    disabled={isLoadingAI} 
-                    className="flex items-center gap-1.5 text-[9px] font-black text-emerald-600 hover:underline disabled:opacity-50"
-                  >
-                    {isLoadingAI ? 'ATMOSFERA SENDO CRIADA...' : 'IA SUGERIR'}
-                  </button>
-                </div>
+                <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Atmosfera do Lugar</h4>
                 <EditableField 
                   type="textarea"
                   value={activeLoc.description} 

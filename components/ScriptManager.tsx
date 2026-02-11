@@ -1,7 +1,5 @@
-
 import React, { useState } from 'react';
 import { Script, Scene, DialogueEntry, Universe, VisualReference } from '../types';
-import { helpWithDialogue } from '../geminiService';
 import ConfirmationModal from './ConfirmationModal';
 import AutoResizeTextarea from './AutoResizeTextarea';
 import VisualGallery from './VisualGallery';
@@ -14,7 +12,6 @@ interface Props {
 
 const ScriptManager: React.FC<Props> = ({ universe, onUpdate }) => {
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
-  const [loadingDialogueId, setLoadingDialogueId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'script' | 'scene' | 'dialogue', id: string, name?: string, parentId?: string, sceneId?: string } | null>(null);
 
   const addScript = () => {
@@ -26,28 +23,6 @@ const ScriptManager: React.FC<Props> = ({ universe, onUpdate }) => {
   const updateScript = (id: string, data: Partial<Script>) => {
     const updated = universe.scripts.map(s => s.id === id ? { ...s, ...data } : s);
     onUpdate({ ...universe, scripts: updated });
-  };
-
-  const handleAISuggestDialogue = async (scriptId: string, scene: Scene, dialogueId: string) => {
-    const dialogue = scene.dialogues.find(d => d.id === dialogueId);
-    if (!dialogue || !dialogue.speaker || !scene.description) return;
-    
-    setLoadingDialogueId(dialogueId);
-    try {
-      const suggestion = await helpWithDialogue(dialogue.speaker, scene.description);
-      if (suggestion) {
-        const script = universe.scripts.find(s => s.id === scriptId);
-        if (script) {
-          const updatedScenes = script.scenes.map(sc => 
-            sc.id === scene.id ? { 
-              ...sc, 
-              dialogues: sc.dialogues.map(d => d.id === dialogueId ? { ...d, text: suggestion } : d) 
-            } : sc
-          );
-          updateScript(scriptId, { scenes: updatedScenes });
-        }
-      }
-    } catch (e) { console.error(e); } finally { setLoadingDialogueId(null); }
   };
 
   const executeDelete = () => {
@@ -235,16 +210,7 @@ const ScriptManager: React.FC<Props> = ({ universe, onUpdate }) => {
                               </div>
                               
                               <div className="sm:col-span-3 space-y-1 pr-8">
-                                <div className="flex justify-between items-center">
-                                  <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">FALA / DIÁLOGO</label>
-                                  <button 
-                                    onClick={() => handleAISuggestDialogue(activeScript.id, scene, dialogue.id)} 
-                                    disabled={loadingDialogueId === dialogue.id} 
-                                    className="flex items-center gap-1.5 text-[8px] font-black text-indigo-600 hover:underline disabled:opacity-50"
-                                  >
-                                    {loadingDialogueId === dialogue.id ? 'PENSANDO...' : 'IA SUGERIR'}
-                                  </button>
-                                </div>
+                                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">FALA / DIÁLOGO</label>
                                 <EditableField 
                                   type="textarea"
                                   value={dialogue.text} 
