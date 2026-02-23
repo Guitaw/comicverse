@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { VisualReference } from '../types';
 import AutoResizeTextarea from './AutoResizeTextarea';
+import { compressImage } from '../src/utils/imageUtils';
 
 interface Props {
   images: VisualReference[];
@@ -14,36 +15,48 @@ const VisualGallery: React.FC<Props> = ({ images = [], onUpdate, accentColor = '
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const processFiles = (files: FileList | null) => {
-    if (!files) return;
+  const processFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
 
+    setIsProcessing(true);
     const filesArray = Array.from(files);
     const newImgs: VisualReference[] = [];
-    let processed = 0;
 
-    filesArray.forEach(file => {
-      if (!file.type.startsWith('image/')) {
-        processed++;
-        return;
-      }
+    try {
+      for (const file of filesArray) {
+        if (!file.type.startsWith('image/')) continue;
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+        });
+        
+        reader.readAsDataURL(file);
+        const base64 = await base64Promise;
+        
+        // Comprimir imagem antes de salvar
+        const compressedBase64 = await compressImage(base64);
+
         newImgs.push({
           id: crypto.randomUUID(),
-          url: reader.result as string,
+          url: compressedBase64,
           title: file.name.split('.')[0] || 'Sem título',
           description: ''
         });
-        processed++;
-        
-        if (processed === filesArray.length) {
-          onUpdate([...images, ...newImgs]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      }
+
+      if (newImgs.length > 0) {
+        onUpdate([...images, ...newImgs]);
+      }
+    } catch (error) {
+      console.error("Erro ao processar imagens:", error);
+      alert("Ocorreu um erro ao processar uma ou mais imagens. Verifique se os arquivos são válidos.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,15 +141,26 @@ const VisualGallery: React.FC<Props> = ({ images = [], onUpdate, accentColor = '
         <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{titleLabel}</h4>
         <button 
           onClick={() => fileInputRef.current?.click()}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${accentClasses.button} border shadow-sm active:scale-95`}
+          disabled={isProcessing}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${accentClasses.button} border shadow-sm active:scale-95 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-          Adicionar Imagens
+          {isProcessing ? (
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+          )}
+          {isProcessing ? 'Processando...' : 'Adicionar Imagens'}
         </button>
         <input type="file" ref={fileInputRef} onChange={handleUpload} accept="image/*" multiple className="hidden" />
       </div>
 
       <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-[2.5rem] border-2 border-transparent transition-all ${isDragging ? accentClasses.drop : ''}`}>
+        {isProcessing && images.length === 0 && (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 animate-pulse">
+            <svg className="w-12 h-12 mb-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p className="text-xs font-black uppercase tracking-widest">Otimizando imagens...</p>
+          </div>
+        )}
         {images.map((img, index) => (
           <div key={img.id} className="group bg-slate-50 rounded-3xl overflow-hidden border border-slate-100 hover:border-indigo-200 transition-all flex flex-col shadow-sm">
             <div className="relative aspect-video overflow-hidden bg-slate-200 cursor-zoom-in">

@@ -12,6 +12,8 @@ import AutoResizeTextarea from './components/AutoResizeTextarea';
 import VisualGallery from './components/VisualGallery';
 import EditableField from './components/EditableField';
 import LoadingScreen from './components/LoadingScreen';
+import { exportUniverseToPDF } from './src/services/pdfService';
+import { compressImage } from './src/utils/imageUtils';
 
 const App: React.FC = () => {
   const [universes, setUniverses] = useState<Universe[]>([]);
@@ -24,6 +26,7 @@ const App: React.FC = () => {
   const [pendingLogo, setPendingLogo] = useState<string | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
   
   const [author, setAuthor] = useState<Author>({
     name: 'Autor Criativo',
@@ -84,11 +87,22 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('comic_studio_data', JSON.stringify(universes));
+    try {
+      localStorage.setItem('comic_studio_data', JSON.stringify(universes));
+    } catch (e) {
+      console.error("Erro ao salvar dados no localStorage:", e);
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        alert("Limite de armazenamento atingido! Tente remover algumas imagens ou reduzir o tamanho dos arquivos.");
+      }
+    }
   }, [universes]);
 
   useEffect(() => {
-    localStorage.setItem('comic_studio_author', JSON.stringify(author));
+    try {
+      localStorage.setItem('comic_studio_author', JSON.stringify(author));
+    } catch (e) {
+      console.error("Erro ao salvar dados do autor:", e);
+    }
   }, [author]);
 
   const activeUniverse = universes.find(u => u.id === activeUniverseId);
@@ -192,22 +206,57 @@ const App: React.FC = () => {
     setCategoryToDelete(null);
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && activeUniverse) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPendingLogo(reader.result as string);
-      reader.readAsDataURL(file);
+      try {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+        });
+        reader.readAsDataURL(file);
+        const base64 = await base64Promise;
+        const compressed = await compressImage(base64, 400, 400);
+        setPendingLogo(compressed);
+      } catch (err) {
+        console.error("Erro ao processar logo:", err);
+        alert("Erro ao processar imagem.");
+      }
     }
     if (e.target) e.target.value = '';
   };
 
-  const handleAuthorPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExportPDF = async () => {
+    if (!activeUniverse) return;
+    setIsExportingPDF(true);
+    try {
+      await exportUniverseToPDF(activeUniverse, author);
+    } catch (error) {
+      console.error("PDF Export failed", error);
+      alert("Falha ao exportar PDF. Tente novamente.");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  const handleAuthorPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setAuthor(prev => ({ ...prev, photo: reader.result as string }));
-      reader.readAsDataURL(file);
+      try {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+        });
+        reader.readAsDataURL(file);
+        const base64 = await base64Promise;
+        const compressed = await compressImage(base64, 200, 200);
+        setAuthor(prev => ({ ...prev, photo: compressed }));
+      } catch (err) {
+        console.error("Erro ao processar foto do autor:", err);
+        alert("Erro ao processar imagem.");
+      }
     }
     if (e.target) e.target.value = '';
   };
@@ -581,6 +630,21 @@ const App: React.FC = () => {
             </button>
             <h2 className="font-black text-slate-800 uppercase text-sm tracking-tight">{activeUniverse?.name || 'ComicVerse Studio'}</h2>
           </div>
+
+          {activeUniverse && (
+            <button 
+              onClick={handleExportPDF}
+              disabled={isExportingPDF}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isExportingPDF ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 shadow-sm'}`}
+            >
+              {isExportingPDF ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              )}
+              <span>{isExportingPDF ? 'Exportando...' : 'Baixar PDF'}</span>
+            </button>
+          )}
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-10 no-scrollbar">
